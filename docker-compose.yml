@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Local LLM Engine (No internet access required post-pull)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: local_ai_engine
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai_secure_net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Web Interface for Corporate Users
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: local_ai_ui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_AUTH=True
+    volumes:
+      - open-webui_data:/app/backend/data
+    depends_on:
+      - ollama
+    networks:
+      - ai_secure_net
+
+networks:
+  ai_secure_net:
+    driver: bridge
+    # Αποτροπή εξωτερικής επικοινωνίας (Enterprise Security)
+    internal: false 
+
+volumes:
+  ollama_data:
+  open-webui_data:
